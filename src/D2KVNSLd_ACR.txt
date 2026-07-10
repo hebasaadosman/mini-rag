@@ -1,0 +1,254 @@
+What is Azure Container Registry (ACR)?
+
+Azure Container Registry (ACR) is a managed registry service based on the open-source Docker Registry 2.0.
+
+It allows you to:
+
+-Store and manage container images and related artifacts
+-Integrate with development and deployment pipelines
+-Build images on-demand or automatically using ACR Tasks
+-----
+How ACR is Used
+
+ACR fits into modern container workflows by enabling:
+
+1. Image Deployment Targets
+
+You can pull images from ACR to:
+
+-Container orchestration systems:
+    Kubernetes
+    DC/OS
+    Docker Swarm
+-Azure services:
+    Azure Kubernetes Service (AKS)
+    App Service
+    Batch
+    Service Fabric
+
+2. Development Workflow Integration
+
+Developers can push images to ACR using CI/CD tools like:
+    Azure Pipelines
+    Jenkins
+
+=>This supports a full continuous integration and delivery pipeline.
+
+ACR integrates with ACR Tasks to:
+
+-Automatically rebuild images when:
+    Base images are updated
+    Code is committed to Git repositories
+-Run multi-step workflows:
+     Build
+     Test
+     Patch multiple images in parallel
+---------------
+
+ACR Services Tiers 
+
+| Tier         | Description                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------------- |
+| **Basic**    | Entry-level, cost-optimized for learning. Same core features as higher tiers but limited storage and throughput. |
+| **Standard** | More storage and throughput. مناسب لمعظم (suitable for most) production workloads.                               |
+| **Premium**  | أعلى أداء (highest performance) with advanced features:                                                          |
+|              | - Geo-replication (multi-region registry)                                                                        |
+|              | - Content trust (image signing)                                                                                  |
+|              | - Private link (restricted access via private endpoints)                                                         |
+|              | - Higher concurrency and storage                                                                                 |
+-------
+Supported Images and Artifacts
+
+ACR supports:
+
+   - Windows and Linux container images
+   -  Docker-compatible images (read-only snapshots in repositories)
+    - Additional formats:
+        Helm charts
+        OCI (Open Container Initiative) images
+-----
+Automated Image Builds
+
+Using ACR Tasks, you can:
+
+Build, test, push, and deploy images in Azure
+Automate:
+    OS and framework patching
+    Image rebuilds on code changes
+Integrate with source control systems
+--------------------------------------------------------------------------
+Storage Capabilities in Azure Container Registry
+
+All ACR tiers (Basic, Standard, Premium) benefit from advanced Azure storage features that ensure security, durability, and scalability.
+
+1. Encryption at Rest
+.All container images and artifacts are automatically encrypted before storage.
+.Data is decrypted on-the-fly when pulled.
+.Optional: Use customer-managed keys (CMK) for an additional layer of encryption.
+.Ensures data security and compliance.
+
+2. Regional Storage
+
+.Data is stored in the same region where the registry is created.
+.Helps meet data residency and compliance requirements.
+.In most regions:
+   Data may also be stored in a paired region within the same geography.
+.Exceptions:
+   Brazil South
+   Southeast Asia
+     → Data stays strictly within the region.
+
+⚠️ Important:
+
+.If a regional outage occurs:
+   Data may become temporarily unavailable
+   No automatic recovery across regions unless configured
+
+3. Geo-Replication (Premium Tier)
+.Available only in Premium tier
+.Replicates registry across multiple regions
+Benefits:
+  .High availability during regional failures
+  .Faster image pulls/pushes (closer to users geographically)
+  .Better support for global development teams
+
+4. Zone Redundancy (Premium Tier)
+
+.Uses Azure Availability Zones
+.Replicates registry across at least 3 zones in a region
+.Protects against datacenter-level failures
+
+5. Scalable Storage
+.You can create:
+   -Unlimited (within limits) repositories
+   -Images
+   -Layers
+   -Tags
+.Limited only by the registry’s storage capacity
+
+6. Performance & Maintenance Considerations
+.Large numbers of:
+   -Repositories
+   -Tags
+   -Images
+      → Can impact performance
+Best Practice:
+.Regularly clean up:
+   -Unused repositories
+   -Old images
+   -Unused tags
+
+⚠️ Warning:
+
+.Deleted resources:
+  - Cannot be recovered
+  - Includes repositories, images, and tags
+----------------------------------------------------------------------------
+Azure Container Registry (ACR) Tasks – Overview
+
+ACR Tasks is a set of features that enables:
+
+Cloud-based container image builds (Linux, Windows, ARM).
+Early-stage development in the cloud with on-demand builds.
+Automated builds triggered by:
+Source code updates
+Base image updates
+Scheduled timers
+--------
+Each ACR Task has an associated source code context - the location of a set of source files used to build a container image or other artifact. Example contexts include a Git repository or a local filesystem.
+--------
+Task Scenarios
+1. Quick Task
+Builds and pushes a single container image on demand in Azure.
+No need for a local Docker Engine.
+Equivalent to running docker build and docker push in the cloud.
+Uses az acr build (Azure CLI).
+Takes a context (files like a Git repo or local directory).
+Automatically pushes the image to the registry.
+Useful for inner-loop development (build → test → iterate before commit).
+Helps validate builds and catch issues early.
+
+2. Automatically Triggered Tasks
+
+Supports multiple triggers to rebuild images:
+
+-Source Code Trigger
+Runs when code is committed or a PR is updated in GitHub/Azure DevOps.
+Configured using az acr task create.
+Uses webhooks to trigger builds automatically.
+
+-Base Image Trigger
+Tracks dependencies on base images.
+Rebuilds application images when:
+Base image updates in ACR
+Base image updates in public repos (like Docker Hub)
+
+-Scheduled Trigger
+Uses timers to run tasks at defined intervals.
+Useful for:
+Maintenance
+Testing
+Recurring workloads
+
+3. Multi-step Tasks
+Defined using a YAML file.
+Supports multi-step, multi-container workflows.
+Each step runs inside a container environment.
+
+Example workflow:
+
+Build web app image
+Run web app container
+Build test image
+Run test container against app
+If tests pass:
+Build Helm chart package
+Perform Helm upgrade
+----------------------------------------------------------------------------------------------------
+What is a Dockerfile?
+
+A Dockerfile is a script containing a sequence of instructions used to build a Docker image.
+
+It typically defines:
+The base (parent) image
+Commands to update the OS and install software
+Application/build artifacts to include
+Services to expose (network/storage configuration)
+The startup command for the container
+
+
+Explanation of Each Instruction
+1. FROM
+FROM mcr.microsoft.com/dotnet/runtime:6.0
+Sets the base image (here, .NET 6 runtime).
+Provides the foundation needed to run the app.
+2. WORKDIR
+WORKDIR /app
+Defines the working directory inside the container.
+All following commands operate relative to this path.
+3. COPY
+COPY bin/Release/net6.0/publish/ .
+Copies built application files into the container.
+Assumes the app is already built and published locally.
+4. EXPOSE
+EXPOSE 80
+Documents the port the app listens on.
+⚠️ Does not make it accessible externally.
+
+To expose it externally, use:
+
+docker run -p <host_port>:<container_port>
+5. CMD
+CMD ["dotnet", "MyApp.dll"]
+Specifies the default command when the container starts.
+Runs the application.
+
+-------
+How Docker Builds Images (Important Concept)
+Each instruction creates a new image layer.
+These layers are:
+Cached
+Built on top of previous layers
+Final result = single unified image, but internally layered.
+-------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------

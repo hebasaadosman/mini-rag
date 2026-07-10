@@ -1,0 +1,13 @@
+from enum import Enum
+
+class ResponseSignals(Enum):
+    SUCCESS = "Success"
+    ERROR = "Error"
+    NOT_FOUND = "Not Found"
+    UNAUTHORIZED = "Unauthorized"
+    FORBIDDEN = "Forbidden"
+    BAD_REQUEST = "Bad Request"
+    FILE_SIZE_EXCEEDED = "File size exceeded"
+    FILE_TYPE_NOT_ALLOWED = "File type not allowed"
+    FILE_UPLOAD_FAILED = "File upload failed"
+    FILE_UPLOAD_SUCCESS = "File uploaded successfully"
