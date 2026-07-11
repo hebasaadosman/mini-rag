@@ -31,7 +31,7 @@ class ProcessController(BaseController):
         loader = self.get_file_loader(file_id=file_id)
         documents = loader.load()
         return documents
-    def process_file_content(self, file_id: str, chunk_size: int = 100, overlap_size: int = 20):
+    async def process_file_content(self, file_id: str, chunk_size: int = 100, overlap_size: int = 20, do_reset: int = 0):
         file_content = self.get_file_content(file_id=file_id)
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=overlap_size,length_function=len, separators=["\n\n", "\n", " ", ""])
         file_content_texts= [
@@ -45,15 +45,15 @@ class ProcessController(BaseController):
             doc.metadata
             for doc in file_content
         ]
-        print(f"File content texts: {file_content_texts}")
-        print(f"File content metadata: {file_content_metadata}")
+       
         chunks = text_splitter.create_documents(file_content_texts, metadatas=file_content_metadata)
-        serializable_chunks = [
-            {
-                "page_content": chunk.page_content,
-                "metadata": chunk.metadata,
-            }
-            for chunk in chunks
-        ]
+        # serializable_chunks = [
+        #     {
+        #         "page_content": chunk.page_content,
+        #         "metadata": chunk.metadata,
+        #     }
+        #     for chunk in chunks
+        # ]
 
-        return serializable_chunks
+        # return serializable_chunks
+        return chunks
