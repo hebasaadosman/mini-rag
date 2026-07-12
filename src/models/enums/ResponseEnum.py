@@ -13,3 +13,6 @@ class ResponseSignals(Enum):
     FILE_UPLOAD_SUCCESS = "File uploaded successfully"
     FILE_PROCESS_FAILED = "File processing failed"
     FILE_PROCESS_SUCCESS = "File processed successfully"
+    NO_FILES_FOUND = "No files found for the project"
+    FILE_NOT_SUPPORTED = "File type not supported"
+    
