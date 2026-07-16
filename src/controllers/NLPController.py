@@ -81,9 +81,6 @@ class NLPController(BaseController):
             point.model_dump(mode="json")
             for point in search_results
           ]
-            return True,{
-                "query": query,
-                "results": results
-            }
+            return True, results
         else:
             return False, "VectorDB client is not initialized."

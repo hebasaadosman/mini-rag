@@ -12,7 +12,6 @@ async def startup_db_client():
     settings = get_settings()
     app.mongodb_conn = AsyncIOMotorClient(settings.MONGODB_URI)
     app.mongodb_client = app.mongodb_conn[settings.MONGODB_NAME]
-
     llm_provider_factory = LLMProviderFactory(config=settings.dict())
     vector_db_provider_factory = VectorDBProviderFactory(config=settings.dict())
     app.generation_client = llm_provider_factory.create_provider(settings.GENERATION_BACKEND)
