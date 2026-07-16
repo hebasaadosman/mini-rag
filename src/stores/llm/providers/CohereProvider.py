@@ -1,3 +1,5 @@
+from urllib import response
+
 from ..LLMEnum import CohereRoleEnum,DocumentTypeEnum
 import cohere
 import logging
@@ -76,15 +78,22 @@ class CohereProvider():
         response = self.client.embed(
             model=self.embedding_model_id,
             texts=[self.process_text(text)],
-            document_type=document_type,
-            embedding_type=["float"],
+            input_type=document_type,
+            embedding_types=["float"],
 
         )
-        if not response or not hasattr(response, 'embeddings') or not response.embeddings.float or len(response.embeddings) == 0:
-            self.logger.error("Failed to generate embedding. Response is empty or invalid.")
-            return None
-        
-        return response.embeddings[0]
+        if (
+            not response
+            or not hasattr(response, "embeddings")
+            or not response.embeddings.float
+            ):
+                self.logger.error(
+                    "Failed to generate embedding. Response is empty or invalid."
+                )
+                return None
+
+    
+        return response.embeddings.float[0]
 
 
     def construct_prompt(self, prompt: str, role: str = CohereRoleEnum.USER.value, **kwargs):

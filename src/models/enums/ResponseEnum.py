@@ -15,4 +15,10 @@ class ResponseSignals(Enum):
     FILE_PROCESS_SUCCESS = "File processed successfully"
     NO_FILES_FOUND = "No files found for the project"
     FILE_NOT_SUPPORTED = "File type not supported"
+    INSERT_INTO_VECTORDB_FAILED = "Failed to insert data into vector database"
+    INSERT_INTO_VECTORDB_SUCCESS = "Data inserted into vector database successfully"
+    GET_VECTORDB_COLLECTION_INFO_SUCCESS = "Successfully retrieved vector database collection info"
+    GET_VECTORDB_COLLECTION_INFO_FAILED = "Failed to retrieve vector database collection info"
+    SEARCH_VECTORDB_SUCCESS = "Search in vector database completed successfully"
+    SEARCH_VECTORDB_FAILED = "Search in vector database failed"
     
