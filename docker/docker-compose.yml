@@ -1,0 +1,17 @@
+services:
+ mongodb:
+    image: mongo:8.3.4-noble
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongodb/db:/data/db
+    networks:
+      - backend
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+networks:
+    backend:
+        driver: bridge
