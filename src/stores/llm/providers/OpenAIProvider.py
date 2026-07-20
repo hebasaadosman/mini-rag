@@ -10,12 +10,13 @@ class OpenAIProvider(LLMInterface):
         self.default_input_max_characters = default_input_max_characters
         self.default_generation_max_output_tokens = default_generation_max_output_tokens
         self.default_generation_temperature = default_generation_temperature
-        self.client = OpenAI(api_key=self.api_key, base_url=self.api_url)
+        self.client = OpenAI(api_key=self.api_key, base_url=self.api_url if self.api_url else None)
 
         self.generation_model_id = "gpt-4o"
 
         self.embedding_model_id = "text-embedding-3-large"
         self.embedding_size = 1536 
+        self.enums=OpenAIRoleEnum
         self.logger = logging.getLogger(__name__)
 
     def set_generation_model(self, model_id: str):

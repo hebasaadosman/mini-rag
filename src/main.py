@@ -4,6 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from helpers.config import get_settings, Settings
 from stores.llm.LLMProviderFactory import LLMProviderFactory
 from stores.vectordb.VectorDBProviderFactory import VectorDBProviderFactory
+from stores.llm.templates.template_parser import TemplateParser
 
 app = FastAPI()
 
@@ -22,6 +23,10 @@ async def startup_db_client():
 
     app.vector_db_client = vector_db_provider_factory.create_provider(settings.VECTOR_DB_BACKEND, db_path=settings.VECTOR_DB_PATH, distance_metric_method=settings.VECTOR_DB_DISTANCE_METRIC_METHOD)
     app.vector_db_client.connect()
+    app.template_parser = TemplateParser(
+        language=settings.PRIMARY_LANGUAGE,
+        default_language=settings.DEFAULT_LANGUAGE,
+    )
     
 @app.on_event("shutdown")
 async def shutdown_db_client():
