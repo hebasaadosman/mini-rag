@@ -21,4 +21,7 @@ class ResponseSignals(Enum):
     GET_VECTORDB_COLLECTION_INFO_FAILED = "Failed to retrieve vector database collection info"
     SEARCH_VECTORDB_SUCCESS = "Search in vector database completed successfully"
     SEARCH_VECTORDB_FAILED = "Search in vector database failed"
+    ANSWER_RAG_SUCCESS = "Successfully answered RAG question"
+    ANSWER_RAG_FAILED = "Failed to answer RAG question"
+    
     

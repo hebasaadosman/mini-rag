@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     OPENAI_KEY: str=None
     OPENAI_API_URL: str=None
     COHERE_API_KEY: str=None
-    GENEERATION_MODEL_ID: str=None
+    GENEERATION_MODEL_ID: str
     EMBEDDING_MODEL_ID: str=None
     EMBEDDING_MODEL_TEMPERATURE: float=None
     INPUT_DEFAULT_MAX_CHARACTERS: int=None
@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     VECTOR_DB_BACKEND: str
     VECTOR_DB_PATH: str
     VECTOR_DB_DISTANCE_METRIC_METHOD: str
+    DEFAULT_LANGUAGE: str
+    PRIMARY_LANGUAGE: str
 
     class Config:
         env_file = ".env"

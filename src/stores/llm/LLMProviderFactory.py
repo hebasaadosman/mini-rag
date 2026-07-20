@@ -14,7 +14,8 @@ class LLMProviderFactory:
                 api_url=self.config.get("OPENAI_API_URL"),
                 default_input_max_characters=self.config.get("INPUT_DEFAULT_MAX_CHARACTERS"),
                 default_generation_max_output_tokens=self.config.get("GENERATION_DEFAULT_MAX_TOKENS"),
-                default_generation_temperature=self.config.get("GENERATION_DEFAULT_TEMPERATURE")
+                default_generation_temperature=self.config.get("GENERATION_DEFAULT_TEMPERATURE"),
+                generation_model_id=self.config.get("GENEERATION_MODEL_ID")
             )
         elif provider_name == LLMEnum.COHERE.value:
             return CohereProvider(

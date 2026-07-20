@@ -8,11 +8,12 @@ from typing import List, Dict, Any
 from models.db_schemes.data_chunk import DataChunk
 from stores.llm.LLMEnum import DocumentTypeEnum
 class NLPController(BaseController):
-    def __init__(self,vectordb_client=None,generation_client=None,embedding_client=None):
+    def __init__(self,vectordb_client=None,generation_client=None,embedding_client=None,template_parser=None):
         super().__init__()
         self.vectordb_client = vectordb_client
         self.generation_client = generation_client
         self.embedding_client = embedding_client
+        self.template_parser = template_parser
 
 
     def create_collection_name(self, project_id: str):
@@ -84,3 +85,45 @@ class NLPController(BaseController):
             return True, results
         else:
             return False, "VectorDB client is not initialized."
+    
+    def answer_rag_question(self, project: Project, query: str, limit: int = 5):
+        # Step 1: Search in VectorDB
+        search_success, retrived_documents = self.search_in_vectordb(project, query, limit)
+        if not search_success:
+            return False, f"Search failed: {retrived_documents}"
+
+        # Step 2: Construct LLM Prompt
+
+        system_prompt = self.template_parser.get("rag", "system_prompt")
+        # document_prompt=[]  
+        # for ind, doc in enumerate(retrived_documents):
+        #     document_prompt.append(self.template_parser.get("rag", "document_prompt",
+        #         {
+        #             "doc_num": ind + 1,
+        #             "chunk_text": doc['text'],
+        #         }
+        #     ))
+    
+        document_prompt = "\n".join([self.template_parser.get("rag", "document_prompt",
+                {
+                    "doc_num": ind + 1,
+                    "chunk_text": doc['text'],
+                }
+            ) for ind, doc in enumerate(retrived_documents)
+        ])
+
+        footer_prompt = self.template_parser.get(
+            "rag",
+            "footer_prompt",
+            {"query": query}
+        )
+        chat_history = [
+            self.generation_client.construct_prompt(system_prompt, role=self.generation_client.enums.SYSTEM.value),
+        ]
+        full_prompt = f"{document_prompt}\n{footer_prompt}\n\nUser Query: {query}"
+        answer = self.generation_client.generate_text(full_prompt, chat_history=chat_history)
+        if answer is None:
+            return False, "Failed to generate answer from LLM." 
+        return True, answer,full_prompt, chat_history
+
+

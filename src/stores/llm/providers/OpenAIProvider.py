@@ -4,18 +4,20 @@ from  openai import OpenAI
 from ..LLMEnum import  OpenAIRoleEnum
 class OpenAIProvider(LLMInterface):
     def __init__(self, api_key: str,api_url: str = None,default_input_max_characters: int = 2000,
-                default_generation_max_output_tokens: int = 100, default_generation_temperature: float = 0.1):
+                default_generation_max_output_tokens: int = 100, default_generation_temperature: float = 0.1, generation_model_id: str = None):
         self.api_key = api_key
-        self.api_url = api_url
+        self.api_url = app.settings.OPENAI_API_URL if api_url is None else api_url
+        self.generation_model_id =  app.seettings.GENEERATION_MODEL_ID if generation_model_id is None else generation_model_id
+        print(f"OpenAIProvider initialized with API URL: {self.api_url} and Generation Model ID: {self.generation_model_id}")
+
         self.default_input_max_characters = default_input_max_characters
         self.default_generation_max_output_tokens = default_generation_max_output_tokens
         self.default_generation_temperature = default_generation_temperature
-        self.client = OpenAI(api_key=self.api_key, base_url=self.api_url)
-
-        self.generation_model_id = "gpt-4o"
+        self.client = OpenAI(api_key=self.api_key, base_url=self.api_url if self.api_url else None)
 
         self.embedding_model_id = "text-embedding-3-large"
         self.embedding_size = 1536 
+        self.enums=OpenAIRoleEnum
         self.logger = logging.getLogger(__name__)
 
     def set_generation_model(self, model_id: str):

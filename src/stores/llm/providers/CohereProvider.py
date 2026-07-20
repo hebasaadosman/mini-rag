@@ -16,6 +16,7 @@ class CohereProvider():
         self.embedding_model_id = "embed-english-v2.0"
         self.embedding_size = 1024
         self.client = cohere.Client(self.api_key)
+        self.enums=CohereRoleEnum
         self.logger = logging.getLogger(__name__)
 
 
