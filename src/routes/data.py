@@ -46,7 +46,6 @@ async def upload_data(request: Request, project_id: str, file: UploadFile, app_s
             resource_project_id=project.id,
             resource_type=ResourceTypeEnum.FILE.value,
         )
-        print(f"Resource to be created: {resource}")
         resource_record = await resource_model.create_resource(resource)
         
     except Exception as e:

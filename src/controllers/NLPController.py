@@ -121,7 +121,6 @@ class NLPController(BaseController):
             self.generation_client.construct_prompt(system_prompt, role=self.generation_client.enums.SYSTEM.value),
         ]
         full_prompt = f"{document_prompt}\n{footer_prompt}\n\nUser Query: {query}"
-        print("Full Prompt for LLM:\n", full_prompt)
         answer = self.generation_client.generate_text(full_prompt, chat_history=chat_history)
         if answer is None:
             return False, "Failed to generate answer from LLM." 
