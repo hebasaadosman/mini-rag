@@ -15,11 +15,11 @@ class ProcessController(BaseController):
         self.project_id = project_id
         self.project_path = ProjectController().get_project_path(project_id=project_id)
 
-    def get_file_extension(self, file_id: str):
+    def get_file_extension(self, file_id: int):
         file_extension = os.path.splitext(file_id)[-1]
         return file_extension
     
-    def get_file_loader(self, file_id: str):
+    def get_file_loader(self, file_id: int):
         file_extension = self.get_file_extension(file_id=file_id)
         file_path = os.path.join(self.project_path, file_id)
         if not os.path.exists(file_path):
@@ -32,11 +32,11 @@ class ProcessController(BaseController):
             raise ValueError(f"{ResponseSignals.FILE_NOT_SUPPORTED.value}: {file_extension}")
         return loader
     
-    def get_file_content(self, file_id: str):
+    def get_file_content(self, file_id: int):
         loader = self.get_file_loader(file_id=file_id)
         documents = loader.load()
         return documents
-    async def process_file_content(self, file_id: str, chunk_size: int = 100, overlap_size: int = 20, do_reset: int = 0):
+    async def process_file_content(self, file_id: int, chunk_size: int = 100, overlap_size: int = 20, do_reset: int = 0):
         file_content = self.get_file_content(file_id=file_id)
         if not file_content or len(file_content) == 0:
             logger.warning(f"Error while processing file {file_id}. No content found.")

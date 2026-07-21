@@ -81,7 +81,7 @@ class OpenAIProvider(LLMInterface):
     def construct_prompt(self, prompt: str, role: str = OpenAIRoleEnum.USER.value, **kwargs):
         return {
             "role": role,
-            "content":self.process_text(prompt)
+            "content":prompt
             }
     def process_text(self, text: str):
         if len(text) > self.default_input_max_characters:

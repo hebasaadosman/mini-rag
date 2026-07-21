@@ -1,11 +1,11 @@
 from .BaseController import BaseController
 from models import ResponseSignals
-from models.db_schemes.project import Project
+from models.db_schemes import Project
 import os
 from .ProjectController import ProjectController
 import re
 from typing import List, Dict, Any
-from models.db_schemes.data_chunk import DataChunk
+from models.db_schemes import DataChunk
 from stores.llm.LLMEnum import DocumentTypeEnum
 class NLPController(BaseController):
     def __init__(self,vectordb_client=None,generation_client=None,embedding_client=None,template_parser=None):
@@ -18,7 +18,7 @@ class NLPController(BaseController):
 
     def create_collection_name(self, project_id: str):
         # Create a unique collection name based on the project ID
-        cleaned_project_id = re.sub(r'[^a-zA-Z0-9_-]', '_', project_id)
+        cleaned_project_id = re.sub(r'[^a-zA-Z0-9_-]', '_', str(project_id))  # Replace any non-alphanumeric characters with underscores
         collection_name = f"collection_project_{cleaned_project_id}"
         return collection_name
 

@@ -54,7 +54,7 @@ class CohereProvider():
         response = self.client.generate(
             model=self.generation_model_id,
             chat_history=chat_history,
-            message=self.process_text(prompt),
+            message=prompt,
             max_tokens=max_tokens,
             temperature=temperature
         )
@@ -78,7 +78,7 @@ class CohereProvider():
 
         response = self.client.embed(
             model=self.embedding_model_id,
-            texts=[self.process_text(text)],
+            texts=[(text)],
             input_type=document_type,
             embedding_types=["float"],
 
@@ -100,7 +100,7 @@ class CohereProvider():
     def construct_prompt(self, prompt: str, role: str = CohereRoleEnum.USER.value, **kwargs):
         return {
                 "role": role,
-                "text": self.process_text(prompt)
+                "text": prompt
             }
         
     
