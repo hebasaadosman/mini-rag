@@ -3,25 +3,24 @@ from fastapi.responses import JSONResponse
 from models.ProjectModel import ProjectModel
 from controllers import NLPController
 import logging
-from .schemes.npl import PushRequest, SearchRequest
+from .schemes.nlp import PushRequest, SearchRequest
 from models import ResponseSignals
 from models.ChunkModel import ChunkModel
-from bson import ObjectId
 
 logger = logging.getLogger("uvicorn.error")
 nlp_router = APIRouter(
     prefix="/api/v1/nlp",
-    tags=["api_v","nlp"],
+    tags=["api_v1","nlp"],
 )
 
 @nlp_router.post("/index/push/{project_id}")
-async def index_project(request: Request, project_id: str,push_request: PushRequest):
+async def index_project(request: Request, project_id: int,push_request: PushRequest):
    
    project_model= await ProjectModel.create_instance(
-           db_client=request.app.mongodb_client
+           db_client=request.app.db_client
    )
    chunk_model= await ChunkModel.create_instance(
-            db_client=request.app.mongodb_client
+            db_client=request.app.db_client
    )
    project = await project_model.get_project_or_create_one(project_id)
    if not project:
@@ -42,7 +41,7 @@ async def index_project(request: Request, project_id: str,push_request: PushRequ
 
    while has_records:
 
-       page_chunks = await chunk_model.get_chunks_by_project_id(project.id, page_number=page_number, page_size=page_size)
+       page_chunks, page_number, page_size = await chunk_model.get_chunks_by_project_id(project.project_id, page_number=page_number, page_size=page_size)
 
        if len(page_chunks):
            page_number += 1
@@ -65,9 +64,9 @@ async def index_project(request: Request, project_id: str,push_request: PushRequ
     )
 
 @nlp_router.get("/index/info/{project_id}")
-async def get_project_index_info(request: Request, project_id: str):
+async def get_project_index_info(request: Request, project_id: int):
     project_model= await ProjectModel.create_instance(
-           db_client=request.app.mongodb_client
+           db_client=request.app.db_client
    )
     project = await project_model.get_project_or_create_one(project_id)
     if not project:
@@ -93,9 +92,9 @@ async def get_project_index_info(request: Request, project_id: str):
         content={"signal": ResponseSignals.GET_VECTORDB_COLLECTION_INFO_SUCCESS.value, "collection_info": collection_info},
     )
 @nlp_router.post("/index/search/{project_id}")
-async def search_project_index(request: Request, project_id: str, search_request: SearchRequest):
+async def search_project_index(request: Request, project_id: int, search_request: SearchRequest):
     project_model= await ProjectModel.create_instance(
-           db_client=request.app.mongodb_client
+           db_client=request.app.db_client
    )
     project = await project_model.get_project_or_create_one(project_id)
     if not project:
@@ -126,9 +125,9 @@ async def search_project_index(request: Request, project_id: str, search_request
     )
 
 @nlp_router.post("/index/answer/{project_id}")
-async def answer_rag_question(request: Request, project_id: str, search_request: SearchRequest):
+async def answer_rag_question(request: Request, project_id: int, search_request: SearchRequest):
     project_model= await ProjectModel.create_instance(
-           db_client=request.app.mongodb_client
+           db_client=request.app.db_client
    )
     project = await project_model.get_project_or_create_one(project_id)
     if not project:

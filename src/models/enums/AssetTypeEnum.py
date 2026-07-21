@@ -1,5 +1,5 @@
 from enum import Enum
 
 
-class ResourceTypeEnum(str, Enum):
+class AssetTypeEnum(str, Enum):
     FILE = "file"

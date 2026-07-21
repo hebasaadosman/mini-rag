@@ -4,7 +4,7 @@ from ..VectorDBInterface import VectorDBInterface
 import logging
 from ..VectorDBEnum import DistanceMetricEnum
 from qdrant_client import QdrantClient,models
-from models.db_schemes.data_chunk import RetriveDocumentResponse
+from models.db_schemes import RetrieveDocument
 
 class QdrantDBProvider(VectorDBInterface):
     def __init__(self, db_path: str = None, distance_metric_method: str = "cosine"):
@@ -125,7 +125,7 @@ class QdrantDBProvider(VectorDBInterface):
             )
             logging.info(f"Search completed in collection '{collection_name}' with limit {limit}.")
             # return search_result.points
-            return [RetriveDocumentResponse
+            return [RetrieveDocument
             (score=point.score, 
             text=point.payload.get("text", "")) 
             for point in search_result.points]

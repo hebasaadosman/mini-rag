@@ -1,55 +1,79 @@
 from .BaseDataModel import BaseDataModel
 from .db_schemes import Project
 from .enums.DatabaseEnum import DatabaseEnum
+from sqlalchemy.future import select
+from sqlalchemy import func
+
 
 class ProjectModel(BaseDataModel):
     def __init__(self, db_client):
         super().__init__(db_client)
-        self.collection = self.db_client[DatabaseEnum.PROJECTS_COLLECTION.value]
+        self.collection = self.db_client
         
     @classmethod
     async def create_instance(cls, db_client:object):
         instance = cls(db_client)
-        await instance.init_collection()
         return instance
     
-    async def init_collection(self):
-        all_collections= await self.db_client.list_collection_names()
-        if DatabaseEnum.PROJECTS_COLLECTION.value not in all_collections:
-            self.collection = self.db_client[DatabaseEnum.PROJECTS_COLLECTION.value]
-            indexes = Project.get_indexes()
-            for index in indexes:
-                await self.collection.create_index(index["key"], name=index["name"], unique=index["unique"])
-
+  
     async def create_project(self, project: Project):
-        project_dict = project.dict(by_alias=True, exclude_unset=True)
-        result = await self.collection.insert_one(project_dict)
-        project._id = result.inserted_id
+        async with self.db_client() as session:
+            async with session.begin():
+               session.add(project)
+
+            await session.commit()
+            await session.refresh(project)
+
+       
         return project
 
-    async def get_project_or_create_one(self, project_id: str):
-        project = await self.collection.find_one({"project_id": project_id})
-        if project:
-            return Project(**project)
-        new_project = Project(project_id=project_id)
-        await self.create_project(new_project)
-        return new_project
+    async def get_project_or_create_one(self, project_id: int):
+      async with self.db_client() as session:
+          async with session.begin():
+              query = select(Project).where(Project.project_id == project_id)
+              result = await session.execute(query)
+              project = result.scalar_one_or_none()
+              if not project:
+                  project = Project(project_id=project_id)
+                  await self.create_project(project)
+                  return project
+              return project
+          
+    async def update_project(self, project_id: int, updated_data: dict):
+        async with self.db_client() as session:
+            async with session.begin():
+                query = select(Project).where(Project.project_id == project_id)
+                result = await session.execute(query)
+                project = result.scalar_one_or_none()
+                if project:
+                    for key, value in updated_data.items():
+                        setattr(project, key, value)
+                    await session.commit()
+                    return True
+                return False
 
-    async def update_project(self, project_id: str, updated_data: dict):
-        result = await self.collection.update_one(
-            {"project_id": project_id}, {"$set": updated_data}
-        )
-        return result.modified_count
-
-    async def delete_project(self, project_id: str):
-        result = await self.collection.delete_one({"project_id": project_id})
-        return result.deleted_count
+    async def delete_project(self, project_id: int):
+        async with self.db_client() as session:
+            async with session.begin():
+                query = select(Project).where(Project.project_id == project_id)
+                result = await session.execute(query)
+                project = result.scalar_one_or_none()
+                if project:
+                    await session.delete(project)
+                    await session.commit()
+                    return True
+                return False
 
     async def get_all_projects(self,page: int = 1, page_size: int = 10):
-        skip = (page - 1) * page_size
-        projects_cursor = self.collection.find().skip(skip).limit(page_size)    
-        projects = []
-        async for project in projects_cursor:
-            projects.append(Project(**project))
-        total_count = await self.collection.count_documents({})
-        return projects, total_count
+        async with self.db_client() as session:
+            async with session.begin():
+                count_query = select(func.count()).select_from(Project)
+                count_result = await session.execute(count_query)
+                total_projects = count_result.scalar_one()
+                total_pages = (total_projects + page_size - 1) // page_size
+                if total_pages == 0:
+                    total_pages = 1
+                query = select(Project).offset((page - 1) * page_size).limit(page_size)
+                result = await session.execute(query)
+                projects = result.scalars().all()
+                return projects, total_pages
