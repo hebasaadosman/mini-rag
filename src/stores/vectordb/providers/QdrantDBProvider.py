@@ -7,7 +7,8 @@ from qdrant_client import QdrantClient,models
 from models.db_schemes import RetrieveDocument
 
 class QdrantDBProvider(VectorDBInterface):
-    def __init__(self, db_path: str = None, distance_metric_method: str = "cosine"):
+    def __init__(self,db_client,db_path, default_vector_size: int,  distance_metric_method: str = "cosine",index_threshold: int = 100):
+
         if distance_metric_method == DistanceMetricEnum.COSINE.value:
             self.distance_metric = models.Distance.COSINE
         elif distance_metric_method == DistanceMetricEnum.DOT.value:
@@ -17,58 +18,60 @@ class QdrantDBProvider(VectorDBInterface):
         else:
             self.distance_metric = distance_metric_method
         self.db_path = db_path
-        self.client = None
-        self.logging = logging.getLogger(__name__)
+        self.client = db_client
+        self.default_vector_size = default_vector_size
+        self.index_threshold = index_threshold
+        self.logging = logging.getLogger("uvicorn")
 
-    def connect(self):
+    async def connect(self):
         try:
             self.client = QdrantClient(path=self.db_path)
-            logging.info(f"Connected to Qdrant at {self.db_path}")
+            self.logging.info(f"Connected to Qdrant at {self.db_path}")
         except Exception as e:
-            logging.error(f"Failed to connect to Qdrant: {e}")
+            self.logging.error(f"Failed to connect to Qdrant: {e}")
             raise
 
-    def disconnect(self):
+    async def disconnect(self):
         # QdrantClient does not have a disconnect method, but we can set the client to None
         self.client = None
-        logging.info("Disconnected from Qdrant")
+        self.logging.info("Disconnected from Qdrant")
 
-    def is_collection_exists(self, collection_name: str) -> bool:
+    async def is_collection_exists(self, collection_name: str) -> bool:
         try:
-            return self.client.collection_exists(collection_name)
+            return await self.client.collection_exists(collection_name)
         except Exception as e:
-            logging.error(f"Error checking if collection exists: {e}")
+            self.logging.error(f"Error checking if collection exists: {e}")
             raise
 
-    def get_collection_info(self, collection_name: str) -> dict:
+    async def get_collection_info(self, collection_name: str) -> dict:
         try:
-            return self.client.get_collection(collection_name).dict()
+            return await self.client.get_collection(collection_name).dict()
         except Exception as e:
-            logging.error(f"Error getting collection info: {e}")
+            self.logging.error(f"Error getting collection info: {e}")
             raise
 
-    def list_all_collections(self):
-        return self.client.list_all_collections()
+    async def list_all_collections(self):
+        return await self.client.list_all_collections()
     
-    def create_collection(self, collection_name: str, vector_size: int, do_reset: bool = False):
+    async def create_collection(self, collection_name: str, vector_size: int, do_reset: bool = False):
         try:
-            if do_reset and self.is_collection_exists(collection_name):
-               _= self.delete_collection(collection_name)
-            if not self.is_collection_exists(collection_name):
-                self.client.create_collection(
+            if do_reset and await self.is_collection_exists(collection_name):
+               _= await self.delete_collection(collection_name)
+            if not await self.is_collection_exists(collection_name):
+                await self.client.create_collection(
                     collection_name=collection_name,
                     vectors_config=models.VectorParams(size=vector_size, distance=self.distance_metric)
                 )
-                logging.info(f"Collection '{collection_name}' created with vector size {vector_size} and distance metric {self.distance_metric}.")
+                self.logging.info(f"Collection '{collection_name}' created with vector size {vector_size} and distance metric {self.distance_metric}.")
                 return True
             else:
-                logging.info(f"Collection '{collection_name}' already exists.")
+                self.logging.info(f"Collection '{collection_name}' already exists.")
                 return False
         except Exception as e:
-            logging.error(f"Error creating collection: {e}")
+            self.logging.error(f"Error creating collection: {e}")
             return False
 
-    def insert_one_vector(
+    async def insert_one_vector(
         self,
         collection_name: str,
         text: str,
@@ -77,8 +80,8 @@ class QdrantDBProvider(VectorDBInterface):
         record_id: str | None = None
     ) -> bool:
         try:
-            if not self.is_collection_exists(collection_name):
-                logging.warning(
+            if not await self.is_collection_exists(collection_name):
+                self.logging.warning(
                     f"Collection '{collection_name}' does not exist."
                 )
                 return False
@@ -94,13 +97,13 @@ class QdrantDBProvider(VectorDBInterface):
                 }
             )
             
-            result = self.client.upsert(
+            result = await self.client.upsert(
                 collection_name=collection_name,
                 points=[point],
                 wait=True
             )
 
-            logging.info(
+            self.logging.info(
                 f"Inserted vector into collection '{collection_name}' "
                 f"with record ID '{point_id}'. Result: {result}"
             )
@@ -108,32 +111,32 @@ class QdrantDBProvider(VectorDBInterface):
             return True
 
         except Exception:
-            logging.exception(
+            self.logging.exception(
                 f"Error inserting vector into '{collection_name}'."
             )
             raise
 
-    def search_by_vector(self, collection_name: str, query_vector: list, limit: int):
+    async def search_by_vector(self, collection_name: str, query_vector: list, limit: int):
         try:
-            if not self.is_collection_exists(collection_name):
-                logging.warning(f"Collection '{collection_name}' does not exist.")
+            if not await self.is_collection_exists(collection_name):
+                self.logging.warning(f"Collection '{collection_name}' does not exist.")
                 return []
-            search_result = self.client.query_points(
+            search_result = await self.client.search_points(
                 collection_name=collection_name,
                 query=query_vector,
                 limit=limit
             )
-            logging.info(f"Search completed in collection '{collection_name}' with limit {limit}.")
+            self.logging.info(f"Search completed in collection '{collection_name}' with limit {limit}.")
             # return search_result.points
             return [RetrieveDocument
             (score=point.score, 
             text=point.payload.get("text", "")) 
             for point in search_result.points]
         except Exception as e:
-            logging.error(f"Error searching by vector: {e}")
+            self.logging.error(f"Error searching by vector: {e}")
             raise
 
-    def insert_many_vectors(
+    async def insert_many_vectors(
         self,
         collection_name: str,
         vectors: list,
@@ -142,8 +145,8 @@ class QdrantDBProvider(VectorDBInterface):
         batch_size: int = 50
          ) -> int:
         try:
-            if not self.is_collection_exists(collection_name):
-                logging.warning(
+            if not await self.is_collection_exists(collection_name):
+                self.logging.warning(
                     f"Collection '{collection_name}' does not exist."
                 )
                 return 0
@@ -153,7 +156,7 @@ class QdrantDBProvider(VectorDBInterface):
 
             print("=" * 60)
             print("Collection:", collection_name)
-            print("Collection exists:", self.is_collection_exists(collection_name))
+            print("Collection exists:", await self.is_collection_exists(collection_name))
             print("Total vectors:", len(vectors))
             print("=" * 60)
 
@@ -186,7 +189,7 @@ class QdrantDBProvider(VectorDBInterface):
 
                     print(f"Uploading batch with {batch_count} points...")
 
-                    result = self.client.upsert(
+                    result = await self.client.upsert(
                         collection_name=collection_name,
                         points=points,
                         wait=True
@@ -194,7 +197,7 @@ class QdrantDBProvider(VectorDBInterface):
 
                     print("Upsert result:", result)
 
-                    info = self.client.get_collection(collection_name)
+                    info = await self.client.get_collection(collection_name)
                     print("Points after upload:", info.points_count)
                     print("=" * 60)
 
@@ -206,7 +209,7 @@ class QdrantDBProvider(VectorDBInterface):
 
                 print(f"Uploading final batch with {batch_count} points...")
 
-                result = self.client.upsert(
+                result = await self.client.upsert(
                     collection_name=collection_name,
                     points=points,
                     wait=True
@@ -214,13 +217,13 @@ class QdrantDBProvider(VectorDBInterface):
 
                 print("Upsert result:", result)
 
-                info = self.client.get_collection(collection_name)
+                info = await self.client.get_collection(collection_name)
                 print("Points after upload:", info.points_count)
                 print("=" * 60)
 
                 inserted_count += batch_count
 
-            logging.info(
+            self.logging.info(
                 f"Inserted {inserted_count} vectors "
                 f"into collection '{collection_name}'."
             )
@@ -228,18 +231,18 @@ class QdrantDBProvider(VectorDBInterface):
             return inserted_count
 
         except Exception:
-         logging.exception(
-            f"Error inserting vectors into '{collection_name}'."
-        )
-         raise
+            self.logging.exception(
+                f"Error inserting vectors into '{collection_name}'."
+            )
+            raise
    
-    def delete_collection(self, collection_name: str):
+    async def delete_collection(self, collection_name: str):
         try:
-            if not self.is_collection_exists(collection_name):
-                logging.warning(f"Collection '{collection_name}' does not exist.")
+            if not await self.is_collection_exists(collection_name):
+                self.logging.warning(f"Collection '{collection_name}' does not exist.")
                 return
-            self.client.delete_collection(collection_name)
-            logging.info(f"Collection '{collection_name}' deleted.")
+            await self.client.delete_collection(collection_name)
+            self.logging.info(f"Collection '{collection_name}' deleted.")
         except Exception as e:
-            logging.error(f"Error deleting collection: {e}")
+            self.logging.error(f"Error deleting collection: {e}")
             raise

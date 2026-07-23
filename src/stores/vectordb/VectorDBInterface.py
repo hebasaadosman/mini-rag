@@ -29,10 +29,10 @@ class VectorDBInterface(ABC):
     def create_collection(self, collection_name: str, vector_size: int,do_reset: bool = False):
         pass
 
-    def insert_one_vector(self, collection_name: str,text:str, vector: list,metadata: dict = None,record_id: str = None):
+    async def insert_one_vector(self, collection_name: str,text:str, vector: list,metadata: dict = None,record_id: str = None):
         pass
 
-    def insert_many_vectors(self, collection_name: str, vectors: List[dict],metadata: dict = None,record_ids: List[str] = None,batch_size: int = 50):
+    async def insert_many_vectors(self, collection_name: str, vectors: List[dict],metadata: dict = None,record_ids: List[str] = None,batch_size: int = 50):
         pass
 
     @abstractmethod

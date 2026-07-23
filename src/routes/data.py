@@ -13,6 +13,7 @@ from models.ProjectModel import ProjectModel
 from models.ChunkModel import ChunkModel
 from models.AssetModel import AssetModel
 from models.enums import AssetTypeEnum
+from controllers import NLPController
 
 logger = logging.getLogger("uvicorn.error")
 data_controller = DataController()
@@ -66,6 +67,13 @@ async def process_endpoint(request: Request, project_id: int, process_request: P
         asset_model=AssetModel(request.app.db_client)
         processed_files=0
         no_records=0
+        nlp_controller = NLPController(
+            vectordb_client=request.app.vectordb_client,
+            generation_client=request.app.generation_client,
+            embedding_client=request.app.embedding_client,
+            template_parser=request.app.template_parser
+        )
+
         if process_request.file_id:
              asset_record=await asset_model.get_asset_record(asset_project_id=project.project_id, asset_name=process_request.file_id)
              if not asset_record:
@@ -92,6 +100,8 @@ async def process_endpoint(request: Request, project_id: int, process_request: P
                 return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"signal": ResponseSignals.FILE_PROCESS_FAILED.value, "error": "No chunks generated from the file."})
             # Save chunks to the database
             if process_request.do_reset == 1:
+                collection_name =await  nlp_controller.create_collection_name(project.project_id)
+                _=await request.app.vectordb_client.delete_collection(collection_name)
                 deleted_count = await chunk_model.delete_chunks_by_project_id(project_id=project.project_id)
                 logger.info(f"Deleted {deleted_count} chunks for project {project_id} due to reset request.")
 

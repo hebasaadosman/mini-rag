@@ -1,8 +1,5 @@
 from .BaseController import BaseController
-from models import ResponseSignals
 from models.db_schemes import Project
-import os
-from .ProjectController import ProjectController
 import re
 from typing import List, Dict, Any
 from models.db_schemes import DataChunk
@@ -16,79 +13,93 @@ class NLPController(BaseController):
         self.template_parser = template_parser
 
 
-    def create_collection_name(self, project_id: str):
-        # Create a unique collection name based on the project ID
-        cleaned_project_id = re.sub(r'[^a-zA-Z0-9_-]', '_', str(project_id))  # Replace any non-alphanumeric characters with underscores
-        collection_name = f"collection_project_{cleaned_project_id}"
+    async def create_collection_name(self, project_id: str):
+        collection_name = f"collection_{self.vectordb_client.default_vector_size}_{project_id}".strip()
         return collection_name
 
 
-    def reset_vectordb_collection(self, project: Project):
-        collection_name = self.create_collection_name(project.project_id)
+    async def reset_vectordb_collection(self, project: Project):
+        collection_name = await self.create_collection_name(project.project_id)
         if self.vectordb_client:
-            self.vectordb_client.delete_collection(collection_name)
-            return True, f"Collection '{collection_name}' has been reset."
+           await self.vectordb_client.delete_collection(collection_name)
+           return True, f"Collection '{collection_name}' has been reset."
         else:
             return False, "VectorDB client is not initialized."
 
-    def get_vectordb_collection_info(self, project: Project):
-        collection_name = self.create_collection_name(project.project_id)
+    async def get_vectordb_collection_info(self, project: Project):
+        collection_name = await self.create_collection_name(project.project_id)
         if self.vectordb_client:
-            collection_info = self.vectordb_client.get_collection_info(collection_name)
+            collection_info = await self.vectordb_client.get_collection_info(collection_name)
             return True, collection_info
         else:
             return False, "VectorDB client is not initialized."
 
-    def index_into_vectordb(self, project: Project, chunks: List[DataChunk], do_reset: bool = False):
-        collection_name = self.create_collection_name(project.project_id)
-
+    async def index_into_vectordb(self, project: Project, chunks: List[DataChunk], do_reset: bool = False):
+        collection_name = await self.create_collection_name(project.project_id)
         if self.vectordb_client:
             if do_reset:
-                self.vectordb_client.delete_collection(collection_name)
+                await self.vectordb_client.delete_collection(collection_name)
             # Assuming chunks is a list of DataChunk objects
             texts = [chunk.chunk_text for chunk in chunks]
             metadatas = [chunk.chunk_metadata for chunk in chunks]
-            vectors=[
-                self.embedding_client.generate_embedding(text, document_type=DocumentTypeEnum.DOCUMENT.value) for text in texts
-            ]
-            vector_size = len(vectors[0])
-            _= self.vectordb_client.create_collection(collection_name, vector_size=vector_size, do_reset=do_reset)
-            records = []
-            for text, vector, metadata in zip(texts, vectors, metadatas):
-                records.append({
-                    "text": text,
-                    "vector": vector,
-                    "metadata": metadata
-                })
-            inserted_count = self.vectordb_client.insert_many_vectors(
+            vectors=  self.embedding_client.generate_embedding(texts, document_type=DocumentTypeEnum.DOCUMENT.value)
+               
+            
+            record_ids = [
+            chunk.chunk_id
+            for chunk in chunks
+          ]
+            # for text, vector, metadata in zip(texts, vectors, metadatas):
+            #     records.append({
+            #         "text": text,
+            #         "vector": vector,
+            #         "metadata": metadata,
+            #         "chunk_id": None  # Add a placeholder for chunk_id
+            #     })
+            inserted_count = await self.vectordb_client.insert_many_vectors(
                 collection_name=collection_name,
-                vectors=records
+                vectors=vectors,
+                texts=texts,
+                metadatas=metadatas,
+                record_ids=record_ids,
+                batch_size=100,
             )
 
             return True, f"Indexed {inserted_count} chunks into collection '{collection_name}'."
         else:
             return False, "VectorDB client is not initialized."
-    def search_in_vectordb(self, project: Project, query: str, limit: int = 5):
-        collection_name = self.create_collection_name(project.project_id)
+    async def search_in_vectordb(self, project: Project, query: str, limit: int = 5):
+        collection_name = await self.create_collection_name(project.project_id)
+        query_vector = None
+
         if self.vectordb_client:
-            query_vector = self.embedding_client.generate_embedding(query, document_type=DocumentTypeEnum.QUERY.value)
+            query_vector  =  self.embedding_client.generate_embedding(query, document_type=DocumentTypeEnum.QUERY.value)
             if query_vector is None:
-                return False, "Failed to generate embedding for the query."
-            
-            search_results = self.vectordb_client.search_by_vector(collection_name, query_vector, limit)
+             return False, "Failed to generate embedding for the query."
+
+            if not isinstance(query_vector, list):
+             return False, "Invalid query vector returned from embedding client."
+
+            if len(query_vector) != self.vectordb_client.default_vector_size:
+             return False, (
+                f"Invalid query vector size: {len(query_vector)}. "
+                f"Expected {self.vectordb_client.default_vector_size}."
+            )
+            search_results = await self.vectordb_client.search_by_vector(collection_name, query_vector, limit)
             if search_results is None:
-                return False, "Search operation failed."
+                    return False, "Search operation failed."
+            
             results = [
-            point.model_dump(mode="json")
-            for point in search_results
-          ]
+                point.model_dump(mode="json")
+                for point in search_results
+            ]
             return True, results
         else:
             return False, "VectorDB client is not initialized."
     
-    def answer_rag_question(self, project: Project, query: str, limit: int = 5):
+    async def answer_rag_question(self, project: Project, query: str, limit: int = 5):
         # Step 1: Search in VectorDB
-        search_success, retrived_documents = self.search_in_vectordb(project, query, limit)
+        search_success, retrived_documents = await self.search_in_vectordb(project, query, limit)
         if not search_success:
             return False, f"Search failed: {retrived_documents}"
 
@@ -120,7 +131,7 @@ class NLPController(BaseController):
         chat_history = [
             self.generation_client.construct_prompt(system_prompt, role=self.generation_client.enums.SYSTEM.value),
         ]
-        full_prompt = f"{document_prompt}\n{footer_prompt}\n\nUser Query: {query}"
+        full_prompt = f"{document_prompt}\n{footer_prompt}\n\n"
         answer = self.generation_client.generate_text(full_prompt, chat_history=chat_history)
         if answer is None:
             return False, "Failed to generate answer from LLM." 

@@ -2,6 +2,7 @@ from ..LLMInterface import LLMInterface
 import logging
 from  openai import OpenAI
 from ..LLMEnum import  OpenAIRoleEnum
+from typing import List, Union
 class OpenAIProvider(LLMInterface):
     def __init__(self, api_key: str,api_url: str = None,default_input_max_characters: int = 2000,
                 default_generation_max_output_tokens: int = 100, default_generation_temperature: float = 0.1, generation_model_id: str = None):
@@ -15,7 +16,7 @@ class OpenAIProvider(LLMInterface):
         self.default_generation_temperature = default_generation_temperature
         self.client = OpenAI(api_key=self.api_key, base_url=self.api_url if self.api_url else None)
 
-        self.embedding_model_id = "text-embedding-3-large"
+        self.embedding_model_id ="text-embedding-3-small"
         self.embedding_size = 1536 
         self.enums=OpenAIRoleEnum
         self.logger = logging.getLogger(__name__)
@@ -42,9 +43,9 @@ class OpenAIProvider(LLMInterface):
         if max_tokens is None:
             max_tokens = self.default_generation_max_output_tokens
 
-        chat_history.append(
-            self.construct_prompt("You are a helpful assistant.", role=OpenAIRoleEnum.SYSTEM.value)
-        )
+        # chat_history.append(
+        #     self.construct_prompt("You are a helpful assistant.", role=OpenAIRoleEnum.SYSTEM.value)
+        # )
         chat_history.append(
             self.construct_prompt(prompt, role=OpenAIRoleEnum.USER.value)
         )
@@ -60,7 +61,7 @@ class OpenAIProvider(LLMInterface):
         
         return response.choices[0].message.content.strip()
     
-    def generate_embedding(self, text: str, document_type: str=None, **kwargs) -> list:
+    def generate_embedding(self, text: Union[str, List[str]], document_type: str=None, **kwargs) -> list:
         if not self.client:
             self.logger.error("OpenAI client is not initialized. Please check your API key and URL.")
             return None
@@ -70,13 +71,13 @@ class OpenAIProvider(LLMInterface):
 
         response = self.client.embeddings.create(
             model=self.embedding_model_id,
-            input=text
+            input=[self.process_text(t) for t in text] if isinstance(text, list) else self.process_text(text)
         )
         if not response or not hasattr(response, 'data') or len(response.data) == 0:
             self.logger.error("Failed to generate embedding. Response is empty or invalid.")
             return None
         
-        return response.data[0].embedding
+        return [item.embedding for item in response.data] if isinstance(text, list) else response.data[0].embedding 
     
     def construct_prompt(self, prompt: str, role: str = OpenAIRoleEnum.USER.value, **kwargs):
         return {

@@ -1,8 +1,10 @@
 from urllib import response
-
-from ..LLMEnum import CohereRoleEnum,DocumentTypeEnum
+from typing import Optional
+from ..LLMEnum import CohereRoleEnum, DocumentTypeEnum
 import cohere
 import logging
+from typing import List, Union
+
 class CohereProvider():
     def __init__(self, api_key: str, default_input_max_characters: int = 2000,
                  default_generation_max_output_tokens: int = 100, default_generation_temperature: float = 0.1):
@@ -44,9 +46,9 @@ class CohereProvider():
         if max_tokens is None:
             max_tokens = self.default_generation_max_output_tokens
 
-        chat_history.append(
-            self.construct_prompt("You are a helpful assistant.", role=CohereRoleEnum.SYSTEM.value)
-        )
+        # chat_history.append(
+        #     self.construct_prompt("You are a helpful assistant.", role=CohereRoleEnum.SYSTEM.value)
+        # )
         chat_history.append(
             self.construct_prompt(prompt, role=CohereRoleEnum.USER.value)
         )
@@ -64,38 +66,62 @@ class CohereProvider():
         
         return response.generations[0].text.strip()
 
-    def generate_embedding(self, text: str, document_type: str=None, **kwargs) -> list:
-        if not self.client:
-            self.logger.error("Cohere client is not initialized. Please check your API key.")
-            return None
-        if not self.embedding_model_id:
-            self.logger.error("Embedding model ID is not set. Please set it using set_embedding_model method.")
-            return None
-        document_type = CohereRoleEnum.DOCUMENT.value 
-        if document_type == DocumentTypeEnum.QUERY .value:
-            document_type = CohereRoleEnum.QUERY.value
-        
+    from typing import Union, List, Optional
 
-        response = self.client.embed(
-            model=self.embedding_model_id,
-            texts=[(text)],
-            input_type=document_type,
-            embedding_types=["float"],
+    async def generate_embedding(
+        self,
+        text: Union[str, List[str]],
+        document_type: Optional[str] = None,
+        **kwargs,
+    ) -> Optional[list]:
 
-        )
-        if (
-            not response
-            or not hasattr(response, "embeddings")
-            or not response.embeddings.float
+            if not self.client:
+                self.logger.error(
+                    "Cohere client is not initialized. Please check your API key."
+                )
+                return None
+
+            if not self.embedding_model_id:
+                self.logger.error(
+                    "Embedding model ID is not set."
+                )
+                return None
+
+            is_batch = isinstance(text, list)
+
+            texts = text if is_batch else [text]
+
+            processed_texts = [
+                self.process_text(item)
+                for item in texts
+            ]
+
+            input_type = (
+                CohereRoleEnum.QUERY.value
+                if document_type == DocumentTypeEnum.QUERY.value
+                else CohereRoleEnum.DOCUMENT.value
+            )
+
+            response = self.client.embed(
+                model=self.embedding_model_id,
+                texts=processed_texts,
+                input_type=input_type,
+                embedding_types=["float"],
+            )
+
+            if (
+                not response
+                or not hasattr(response, "embeddings")
+                or not response.embeddings.float
             ):
                 self.logger.error(
                     "Failed to generate embedding. Response is empty or invalid."
                 )
                 return None
 
-    
-        return response.embeddings.float[0]
+            embeddings = response.embeddings.float
 
+            return embeddings if is_batch else embeddings[0]
 
     def construct_prompt(self, prompt: str, role: str = CohereRoleEnum.USER.value, **kwargs):
         return {

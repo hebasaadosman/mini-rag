@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+from typing import List, Optional
 class Settings(BaseSettings):
 
 
@@ -17,12 +17,14 @@ class Settings(BaseSettings):
     OPENAI_API_URL: str=None
     COHERE_API_KEY: str=None
     GENEERATION_MODEL_ID: str
+    GENEERATION_MODEL_ID_LITERAL: List[str]=None
     EMBEDDING_MODEL_ID: str=None
     EMBEDDING_MODEL_TEMPERATURE: float=None
     INPUT_DEFAULT_MAX_CHARACTERS: int=None
     GENERATION_DEFAULT_MAX_TOKENS: int=None
     EMBEDDING_MODEL_SIZE: int
-    
+    VECTOR_DB_BACKEND_LITERAL: List[str]=None
+    VECTOR_DB_PGVEC_INDEX_THRESHOLD: int=100
     VECTOR_DB_BACKEND: str
     VECTOR_DB_PATH: str
     VECTOR_DB_DISTANCE_METRIC_METHOD: str
@@ -35,6 +37,12 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
+
+    INDEX_PAGE_SIZE: int
+    INDEX_MAX_RETRIES: int
+    INDEX_BATCH_TIMEOUT_SECONDS: int
+    INDEX_MAX_BACKOFF_SECONDS: int
+    INDEX_DELAY_BETWEEN_BATCHES_SECONDS: int
 
     class Config:
         env_file = ".env"

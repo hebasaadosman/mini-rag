@@ -86,3 +86,10 @@ class ChunkModel(BaseDataModel):
                 chunks = result.scalars().all()
 
                 return chunks,page_number,page_size
+    async def get_total_chunks_count_by_project_id(self, project_id: int):
+        total_count=0
+        async with self.db_client() as session:
+            async with session.begin():
+                total_count = await session.execute(select(func.count(DataChunk.chunk_id)).where(DataChunk.chunk_project_id == project_id))
+                total_count = total_count.scalar_one()
+        return total_count

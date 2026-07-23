@@ -8,6 +8,13 @@ from langchain_community.document_loaders import TextLoader
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from models.enums.ResponseEnum import ResponseSignals
+from typing import List
+from dataclasses import dataclass
+
+@dataclass
+class FileChunk:
+    page_content: str
+    metadata: dict
 
 class ProcessController(BaseController):
     def __init__(self,project_id: str):
@@ -53,7 +60,7 @@ class ProcessController(BaseController):
             for doc in file_content
         ]
        
-        chunks = text_splitter.create_documents(file_content_texts, metadatas=file_content_metadata)
+        # chunks = text_splitter.create_documents(file_content_texts, metadatas=file_content_metadata)
         # serializable_chunks = [
         #     {
         #         "page_content": chunk.page_content,
@@ -63,4 +70,23 @@ class ProcessController(BaseController):
         # ]
 
         # return serializable_chunks
+        return self.process_simpler_spiliter(file_content_texts,file_content_metadata,chunk_size=chunk_size,overlap_size=overlap_size,spiliter_tag="\n")
+    
+    def process_simpler_spiliter(self,texts:List[str],metadata:List[dict],chunk_size: int = 200, overlap_size: int = 20,spiliter_tag:str="\n"):
+        full_text = " ".join(texts)
+        lines=[
+            doc.strip()
+            
+            for i, doc in enumerate(full_text.split(spiliter_tag)) if len(doc.strip()) > 1
+        ]
+        chunks = []
+        current_chunk = ""
+        for line in lines:
+            if len(current_chunk) + len(line) + 1 <= chunk_size:
+                current_chunk += line +spiliter_tag
+            else:
+                chunks.append(FileChunk(page_content=current_chunk.strip(), metadata={}))
+                current_chunk = line + spiliter_tag
+        if current_chunk:
+            chunks.append(FileChunk(page_content=current_chunk.strip(), metadata={}))
         return chunks
